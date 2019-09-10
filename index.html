@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>Lab 2</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jquerymobile/1.4.5/jquery.mobile.min.css">
+
+    </head>
+<body>
+  <div class="container">
+  <div class="h1">Event Registration Form</div>
+  <form>
+  <div class="form-group row">
+    <label for="invitationID" class="col-sm-2 col-form-label">Invitation ID:</label>
+    <div class="col-sm-10">
+    <input type="email" class="form-control" id="invitationID" placeholder="Invitation ID">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="name" class="col-sm-2 col-form-label">Your name:</label>
+    <div class="col-sm-10">
+    <input type="email" class="form-control" id="name" placeholder="Your name">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="company" class="col-sm-2 col-form-label">Company:</label>
+    <div class="col-sm-10">
+    <input type="email" class="form-control" id="company" placeholder="Company">
+    </div>
+  </div>
+      <fieldset class="form-group">
+          <div class="row">
+              <legend class="col-form-label col-sm-2 pt-0">Type:</legend>
+              <div class="col-sm-10">
+                  <div class="form-check">
+                      <input class="form-check-input" type="radio" name="type" id="type1" value="Sole-proprietorship" checked>
+                      <label class="form-check-label" for="type1">
+                          Sole proprietorship
+                      </label>
+                  </div>
+                  <div class="form-check">
+                      <input class="form-check-input" type="radio" name="type" id="type2" value="Partnership">
+                      <label class="form-check-label" for="type2">
+                          Partnership
+                      </label>
+                  </div>
+                  <div class="form-check">
+                      <input class="form-check-input" type="radio" name="type" id="type3" value="Corporation">
+                      <label class="form-check-label" for="type3">
+                          Corporation
+                      </label>
+                  </div>
+                  <div class="form-check">
+                      <input class="form-check-input" type="radio" name="type" id="type4" value="Other">
+                      <label class="form-check-label" for="type4">
+                          Other
+                      </label>
+                  </div>
+              </div>
+          </div>
+      </fieldset>
+</form>
+  <div id="alert" class="alert alert-warning" role="alert">
+      <span id="alertClose" class="close" aria-hidden="true">&times;</span>
+      <span id="msg"> </span>
+  </div>
+  <div class="row">
+      <div class="col-sm-10">
+          <button id="btnRegister" class="btn btn-primary btn-md">Register</button>
+          <button id="btnCheck" class="btn btn-secondary btn-md">Check Registration</button>   
+          <button id="btnDelete" class="btn btn-warning btn-md">Delete Registration</button>   
+  </div>
+</div>
+  
+  <script>
+    
+    
+    $(document).ready(initApp);
+        
+    function initApp() {
+        $("#alert").hide();
+        var $id = $("#invitationID");
+        var $name =  $("#name");
+        var $company = $("#company");
+        var $msg = $("#msg");
+        
+        //displays a popup with corresponding message
+        function showPopup(message) {
+            $msg.html(message).parent().show(1000);
+            setTimeout( function() { $msg.parent().hide(1000);}, 2500);
+        };
+        
+        $("#alertClose").click(function() {
+            $(this).parent().hide();
+        });
+        
+        var db, openRequest;
+      
+        //uses indexedDB to store resgistrations
+        var dbSupported = ("indexedDB" in window) ? true : false;
+        
+        //if indexedDB is supported, create an open request for the DB
+        //this calls onUpgradeNeeded where we create the object storage
+        if (dbSupported) {
+            var openRequest = window.indexedDB.open("registrationDB", 1);
+            
+            openRequest.onupgradeneeded = function(event) {
+                console.log("DB Upgrading");
+                
+                db = openRequest.result;
+                
+                //object store of registrated users using id as primary key
+                if (!db.objectStoreNames.contains("registration")) {
+                    db.createObjectStore("registration", {keyPath:"id"});
+                }
+            };
+            //check if successful of rnot
+            openRequest.onsuccess=function(event) {
+                console.log("DB Successful!");
+                db=openRequest.result;
+            };
+            
+            openRequest.onerror=function(event) {
+                console.log("DB error...");
+                console.dir(event);
+            };
+            
+        }
+        
+        //register button
+        $("#btnRegister").on("click", function() {
+            
+            //gets values of all fields, including radio buttons
+            var id = $id.val();
+            var name = $name.val();
+            var company = $company.val();
+            var type = $("input[name='type']:checked").val();
+            //check for any empty fields and build an error string
+            if (id.length < 1 || name.length < 1 || company.length < 1) {
+                var errors = '';
+                
+                if (id.length < 1) {
+                    errors += "Invitation ID cannot be empty<br>";
+                }
+                
+                if (name.length < 1) {
+                    errors += "Your Name cannot be empty<br>";
+                }
+                
+                if (company.length < 1) {
+                    errors += "Company Name cannot be empty<br>";
+                }
+                //display errors and don't store info
+                showPopup(errors);
+            } else {
+            
+            //create a new registration object
+            var registration ={id:id, name:name, company:company, type:type};
+            
+            //create a new transaction on the registration table, for reading and writing
+            var transaction = db.transaction(["registration"], "readwrite");
+            
+            //creates a new request to store the new registration in the table
+            var storeRequest = transaction.objectStore("registration").put(registration);
+            
+            //check if successful or not
+            storeRequest.onsuccess = function() {
+                showPopup("Registration Info Saved");
+            };
+            
+            storeRequest.onerror=function() {
+                showPopup("Error with saving registration to database");
+            };
+          } 
+        });
+        
+        //check for an existing registration based on id
+        $("#btnCheck").on("click", function() {
+            var id = $id.val();
+            //check for input error
+            if (id.length<1) {
+                showPopup("Invitation ID cannot be empty");
+                return true;
+            }
+            
+            //request to check teh table for the unique id
+            var storeRequest = db.transaction(["registration"],"readwrite").objectStore("registration").get(id);
+            
+            //if successful...
+            storeRequest.onsuccess= function() {
+                //if the result is successful and a name is found
+                if ((storeRequest.result) && ("name" in storeRequest.result)) {
+                    $name.val(storeRequest.result.name); //set the input fields to the found data
+                    $company.val(storeRequest.result.company);
+                    $("input[name=type]:checked").prop("checked", false); //check which radio buttons to set
+                    $("input[name=type][value=" + storeRequest.result.type + "]").prop("checked", true);
+                    showPopup("Invitation was successfully retrieved!");
+                } else {
+                    //if id isnt found...
+                    showPopup("Invitation ID not found!");
+                };
+                
+            };
+            
+        });
+        
+        //delete a registartion from the table based on unique id
+        $("#btnDelete").on("click", function () {
+            var id = $id.val();
+            if (id.length < 1) { //input check
+                showPopup("Invitation ID cannot be empty");
+                return true;
+            }
+            
+            //same request as other two, but deletes from the table
+            var storeRequest = db.transaction(["registration"], "readwrite").objectStore("registration").delete(id);
+            
+            //if id is found...
+            storeRequest.onsuccess = function() {
+                //informs user of deletion and resets all input fields
+              showPopup("Invitation was successfully deleted!");  
+              $('#invitationID').val('');
+              $('#name').val('');
+              $('#company').val('');
+              $("input[name=type]:checked").prop("checked", false);
+              $("input[name=type][value=Sole-proprietorship]").prop("checked", true);
+            };
+         
+         //on error, or if id doesn't exist
+            storeRequest.onerror = function() {
+                showPopup("Invitation ID not found!");
+            };
+            
+           
+        });
+        
+    };
+        
+        
+      
+      
+      
+  </script>
+</body>
+</html>
